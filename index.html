@@ -1,0 +1,411 @@
+<html>
+<head>
+  <title>SoundAir</title>
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400" rel="stylesheet">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="audiosynth.js"></script>
+  <script src="http://js.leapmotion.com/leap-0.6.3.min.js"></script>
+  <style>
+    html, body{
+      margin: 0;
+      padding-top: 0;
+      background-color: #364854;
+      font-family: 'Open Sans', sans-serif;
+      color: #fff;
+      font-weight: 300;
+      text-align: center;
+    }
+    #container {
+      padding-top: 2em;
+    }
+    h1 {
+      font-weight: 300;
+      font-size: 2.5em;
+    }
+    #canvasContainer{
+      width: 800px;
+      height: 500px;
+      margin-left: auto;
+      margin-right: auto;
+      display: none;
+      position: relative;
+    }
+    #mycanvas {
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 10;
+      pointer-events:none;
+    }
+    #caption{
+      font-size: 1.5em;
+      margin-top: 0.1em;
+    }
+    #toolbar {
+      padding-top:1em;
+    }
+    .button {
+      border-bottom: 1px solid #fff;
+      color: #fff;
+      font-size: 1.5em;
+      display: inline-block;
+      padding-left: 0.1em;
+      padding-right: 0.1em;
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+    .button:hover {
+      padding-left: 0.2em;
+      padding-right: 0.2em;
+      border-bottom: 2px solid #fff;
+    }
+    .button:active {
+      padding-left: 0.1em;
+      padding-right: 0.1em;
+      border-bottom: 1px solid #fff;
+    }
+    .card {
+      width: 76px;
+      height: 127px;
+      background-color: rgba(255, 255, 255, 0.9);
+      border: 1px solid #aaa;
+      position: absolute;
+      z-index: 1;
+      top: 0;
+      left: 0;
+      color: #333;
+    }
+    .card span{
+      font-size: 1.2em;
+      border: 1px solid #333;
+      padding: 0.15em;
+      cursor: pointer;
+      margin:0.1em;
+    }
+    .card input{
+      display: none;
+      width: 116px;
+      position: relative;
+      left: -21px;
+      margin-top: 0.2em;
+      border-radius: 0.25em;
+      border: 1px solid #aaa;
+      text-align: center;
+      font-size: 1.25em;
+    }
+    .cardSound {
+      display: none;
+      font-size: 1.4em;
+    }
+    .cardTitle {
+      font-size: 1.5em;
+      padding-bottom: 0.1em;
+      padding-top: 0.2em;
+    }
+    .editPanel {
+      width: 20em;
+      position:relative;
+      left: -6.5em;
+      display: none;
+    }
+    .editButton {
+      border:1px solid #000;
+      font-size: 1.2em;
+      display:inline-block;
+      background-color: rgba(255, 255, 255, 0.9);
+      margin:0.2em;
+      cursor: pointer;
+      padding-left: 0.4em;
+      padding-right: 0.4em;
+      padding-top: 0.1em;
+      padding-bottom: 0.1em;
+      transition: all 0.1s ease;
+    }
+    .editButton:hover {
+      background-color: rgba(255, 255, 255, 1);
+    }
+    .editButton:active {
+      background-color: rgba(255, 255, 255, 0.9);
+    }
+    #instrumentLabel {
+      font-size: 1.5em;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1 id="heading" style="display: none;">Welcome to SoundAir</h1>
+    <div id="canvasContainer">
+      <canvas id="mycanvas" width="800" height="500"></canvas>
+    </div>
+    <div id="toolbar" style="display: none;"><div class="button" id="addCard">Add Card</div></div>
+    <p id="caption" style="display: none;">Let's begin...</p>
+    <p id="instrumentLabel" style="display: none;">Piano</p>
+  </div>
+
+  <script>
+
+    $(document).ready(function() {
+      $("#heading").fadeIn("slow", function(){
+        $("#caption").fadeIn("slow", function(){
+          $("#canvasContainer").slideDown("slow");
+          $("#caption").fadeOut("slow", function(){
+            $("#toolbar").fadeIn("slow");
+          });
+        });
+      });
+    });
+
+    var cardWidth = 76;
+    var cardHeight = 127;
+
+    function createCardDiv(id){
+      var div = document.createElement("DIV");
+      var title = document.createElement("DIV");
+      var move = document.createElement("SPAN");
+      var resize = document.createElement("SPAN");
+      var music = document.createElement("SPAN");
+      var edit = document.createElement("SPAN");
+      var soundText = document.createElement("INPUT");
+      var soundTextDisplay = document.createElement("DIV");
+      soundTextDisplay.className = "cardSound";
+      soundTextDisplay.id = "soundTextDisplay" + id;
+      div.className = "card";
+      title.className = "cardTitle";
+      move.className = "glyphicon glyphicon-move";
+      resize.className = "glyphicon glyphicon-resize-small";
+      music.className = "glyphicon glyphicon-music";
+      edit.className = "glyphicon glyphicon-cog";
+      move.setAttribute("data-toggle", "tooltip");
+      resize.setAttribute("data-toggle", "tooltip");
+      music.setAttribute("data-toggle", "tooltip");
+      edit.setAttribute("data-toggle", "tooltip");
+      move.setAttribute("data-placement", "bottom");
+      resize.setAttribute("data-placement", "bottom");
+      music.setAttribute("data-placement", "bottom");
+      edit.setAttribute("data-placement", "bottom");
+      move.setAttribute("title", "Move card");
+      resize.setAttribute("title", "Half the size of the card");
+      music.setAttribute("title", "Attach a sound to the card");
+      edit.setAttribute("title", "Attach an action to the card");
+      move.setAttribute("onclick", "move("+id+")");
+      resize.setAttribute("onclick", "resize("+id+")");
+      resize.style.display = "none";
+      music.setAttribute("onclick", "music("+id+")");
+      edit.setAttribute("onclick", "edit("+id+")");
+      soundText.setAttribute("type", "text");
+      soundText.setAttribute("onkeypress", "keyup(event, " + id + ")");
+      soundText.id="soundText"+id;
+      title.appendChild(document.createTextNode("#" + id));
+      div.id = "card"+id;
+      div.style.left = Math.floor(cx - cardWidth / 2)+"px";
+      div.style.top = Math.floor(cz - cardHeight / 2)+"px";
+
+      // Create the edit panel
+      editPanel = document.createElement("DIV");
+      editPanel.id = "edit"+id;
+      editPanel.className = "editPanel";
+      editPanel.innerHTML = "<div class='editButton' onclick='showVolumePanel("+id+")'>Change<br/>volume</div><div class='editButton' onclick='showInstrumentPanel("+id+")'>Change<br/>instrument</div>";
+
+      // Create the volume set panel
+      volumePanel = document.createElement("DIV");
+      volumePanel.id = "volumePanel"+id;
+      volumePanel.className = "editPanel";
+      volumePanel.innerHTML = "<div class='editButton' onclick='setAction("+id+", \"vol+\")'>+</div><div class='editButton' onclick='setAction("+id+", \"vol-\")'>-</div>";
+      volumePanel.style.left = "-1.1em";
+
+      // Create the change instrument panel
+      instrumentPanel = document.createElement("DIV");
+      instrumentPanel.id = "instrumentPanel"+id;
+      instrumentPanel.className = "editPanel";
+      instrumentPanel.innerHTML = "<div class='editButton' onclick='setAction("+id+", \"Piano\")'>Piano</div><div class='editButton' onclick='setAction("+id+", \"Organ\")'>Organ</div><div class='editButton' onclick='setAction("+id+", \"Guitar\")'>Guitar</div>";
+      instrumentPanel.style.left = "-1.1em";
+
+      div.appendChild(title);
+      div.appendChild(move);
+      div.appendChild(resize);
+      div.appendChild(music);
+      div.appendChild(edit);
+      div.appendChild(soundText);
+      div.appendChild(soundTextDisplay);
+      div.appendChild(editPanel);
+      editPanel.appendChild(volumePanel);
+      editPanel.appendChild(instrumentPanel);
+
+      return div;
+    }
+
+    var cardCount = 0;
+    var cards = {};
+
+    document.getElementById("addCard").onclick = function(){
+      cardCount += 1;
+      document.getElementById("canvasContainer").appendChild(createCardDiv(cardCount));
+      cards[cardCount] = {'x': -1*(cx - canvas.width / 2), 'z': cz - canvas.height / 2, 'sound': null, 'pressed': false};
+      $('[data-toggle="tooltip"]').tooltip();
+    }
+
+    function move(id){
+        $("#card" + id).css("left", Math.floor(cx - cardWidth / 2) + "px");
+        $("#card" + id).css("top", Math.floor(cz - cardHeight / 2) + "px");
+        cards[id]['x'] = -1*(cx - canvas.width / 2);
+        cards[id]['z'] = cz - canvas.height / 2;
+    }
+
+    function resize(id){
+
+    }
+
+    function music(id){
+      document.getElementById("soundText"+id).style.display = "block";
+      document.getElementById("soundText"+id).focus();
+    }
+
+    function keyup(e, id){
+      if(e.keyCode == 13){
+        var text = document.getElementById("soundText"+id).value;
+        document.getElementById("soundText"+id).style.display = "none";
+        document.getElementById("soundTextDisplay"+id).innerHTML = text;
+        cards[id]["sound"] = text;
+        document.getElementById("soundTextDisplay"+id).style.display = "block";
+      }
+    }
+
+    function edit(id){
+      $("#edit"+id).toggle();
+    }
+
+    function showVolumePanel(id){
+      $("#volumePanel"+id).toggle();
+    }
+
+    function showInstrumentPanel(id){
+      $("#instrumentPanel"+id).toggle();
+    }
+
+    function setAction(id, action){
+      console.log(action);
+      document.getElementById("edit"+id).style.display = "none";
+      document.getElementById("soundTextDisplay"+id).innerHTML = action;
+      cards[id]["sound"] = action;
+      document.getElementById("soundTextDisplay"+id).style.display = "block";
+    }
+
+    // LeapMotion integration
+    var canvas = document.getElementById('mycanvas');
+    var context = canvas.getContext('2d');
+
+    var previousFrame = null;
+    var controllerOptions = {optimizeHMD: true};
+    var pressY = 300;
+
+    // Helper functions
+    function distance(x1, x2, y1, y2){
+      return Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+    }
+    function isOnCard(leftX, rightX, topZ, bottomZ, fingerX, fingerZ){
+      return fingerX < leftX && fingerX > rightX && fingerZ > topZ && fingerZ < bottomZ;
+    }
+
+    var piano = Synth.createInstrument('piano');
+    var guitar = Synth.createInstrument('acoustic');
+    var organ = Synth.createInstrument('organ');
+    var instruments = [piano, guitar, organ];
+    var selected = 0;
+    var playing = false;
+    var volume = 1;
+
+    Leap.loop(controllerOptions, function(frame) {
+      var data = document.getElementById("data");
+      if (frame.pointables.length > 0) {
+        var indexFinger = frame.pointables[1];
+        var fingerX = Math.round(indexFinger.tipPosition[0]);
+        var fingerZ = Math.round(indexFinger.tipPosition[2]);
+        var palmY = frame.hands[0].palmPosition[1];
+
+        if(palmY > 300){
+          for (var key in cards) {
+              if (!cards.hasOwnProperty(key)) continue;
+              var x = cards[key]["x"];
+              var z = cards[key]["z"];
+              if(isOnCard(x + cardWidth / 2, x - cardWidth / 2, z - cardHeight / 2, z + cardHeight / 2, fingerX, fingerZ)){
+                if(cards[key]["sound"] && cards[key]["pressed"] == false){
+                  if(cards[key]["sound"] == "vol+"){
+                    volume += 0.1;
+                    if(volume > 1){
+                      volume = 1;
+                    }
+                    document.getElementById("caption").innerHTML = "Volume: " + Math.floor(volume*100) + "%";
+                    document.getElementById("caption").style.display = "block";
+                    Synth.setVolume(volume);
+                  }else if(cards[key]["sound"] == "vol-"){
+                    volume -= 0.1;
+                    if(volume < 0){
+                      volume = 0;
+                    }
+                    document.getElementById("caption").innerHTML = "Volume: " + Math.floor(volume*100) + "%";
+                    document.getElementById("caption").style.display = "block";
+                    Synth.setVolume(volume);
+                  }else if(cards[key]["sound"] == "Piano"){
+                    selected = 0;
+                    document.getElementById("instrumentLabel").innerHTML = "Instrument: Piano";
+                    document.getElementById("instrumentLabel").style.display = "block";
+                  }else if(cards[key]["sound"] == "Guitar"){
+                      selected = 1;
+                      document.getElementById("instrumentLabel").innerHTML = "Instrument: Guitar";
+                      document.getElementById("instrumentLabel").style.display = "block";
+                  }else if(cards[key]["sound"] == "Organ"){
+                        selected = 2;
+                        document.getElementById("instrumentLabel").innerHTML = "Instrument: Organ";
+                        document.getElementById("instrumentLabel").style.display = "block";
+                  }else{
+                    instruments[selected].play(cards[key]["sound"][0].toUpperCase(), cards[key]["sound"][1], 2);
+                  }
+                  cards[key]["pressed"] = true;
+                  playing = true;
+                }
+              }else{
+                cards[key]["pressed"] = false;
+              }
+          }
+        }else if(playing){
+          for (var key in cards) {
+              if (!cards.hasOwnProperty(key)) continue;
+              cards[key]["pressed"] = false;
+          }
+          playing = false;
+        }
+
+        // Draw circle on canvas at fingerX/Z
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.beginPath();
+        cx = Math.round(-fingerX + canvas.width / 2);
+        cz = Math.round(fingerZ + canvas.height / 2);
+        context.arc(cx, cz, 10, 0, 2 * Math.PI, false);
+        context.fillStyle = '#0000ff';
+        context.fill();
+
+        // How close are we to pressing?
+        var distance = 300 - palmY;
+        var lineWidth;
+        if(distance > 0){
+          if(distance < 10){
+            lineWidth = 1;
+          }else{
+            lineWidth = Math.floor(Math.log(distance));
+          }
+          context.lineWidth = lineWidth;
+          context.strokeStyle = '#fff';
+          context.stroke();
+        }
+      }
+
+      previousFrame = frame;
+    })
+
+  </script>
+
+</body>
+</html>
