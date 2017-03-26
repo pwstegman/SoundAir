@@ -10,3 +10,5 @@ An open flat hand with spread fingers where the tip of the index finger is cente
 When you click "Add Card", the card is added at the current position of the tip of your index finger, seen as a blue dot on the screen.
 
 The code was rushed at times, and some values (such as the y distance of the Leap Motion from the table) are hardcoded. You may have to change these values when testing it.
+
+https://github.com/keithwhor/audiosynth was used to produce the notes and sounds.
