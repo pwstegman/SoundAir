@@ -7,4 +7,6 @@ Open index.html to try it out. Position the Leap Motion over the table facing do
 The index finger is tracked to determine which card to play, and the height of the center of your hand is tracked to determine when to play the note.
 An open flat hand with spread fingers where the tip of the index finger is centered over the card you wish to play and you play it by moving your hand up and down over the card works best.
 
+When you click "Add Card", the card is added at the current position of the tip of your index finger, seen as a blue dot on the screen.
+
 The code was rushed at times, and some values (such as the y distance of the Leap Motion from the table) are hardcoded. You may have to change these values when testing it.
