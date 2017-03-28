@@ -31,6 +31,7 @@
       margin-right: auto;
       display: none;
       position: relative;
+      user-select: none;
     }
     #mycanvas {
       position: absolute;
@@ -240,11 +241,15 @@
     var cardCount = 0;
     var cards = {};
 
-    document.getElementById("addCard").onclick = function(){
+    function addCard(){
       cardCount += 1;
       document.getElementById("canvasContainer").appendChild(createCardDiv(cardCount));
       cards[cardCount] = {'x': -1*(cx - canvas.width / 2), 'z': cz - canvas.height / 2, 'sound': null, 'pressed': false};
       $('[data-toggle="tooltip"]').tooltip();
+    }
+
+    document.getElementById("addCard").onclick = function(){
+      addCard();
     }
 
     function move(id){
@@ -297,6 +302,30 @@
     var canvas = document.getElementById('mycanvas');
     var context = canvas.getContext('2d');
 
+    // Events to enable mouse mode when the LeapMotion is not connected
+    var mode = "leap";
+    var mouseDown = false
+    var mouseX = 0;
+    var mouseY = 0;
+    document.getElementById("canvasContainer").addEventListener('mousemove', function(e) {
+      if(mode == "mouse"){
+        var rect = canvas.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = e.clientY - rect.top;
+      }
+    }, false);
+    document.getElementById("canvasContainer").addEventListener('mousedown', function(e) {
+      mouseDown = true;
+    }, false);
+    document.getElementById("canvasContainer").addEventListener('mouseup', function(e) {
+      mouseDown = false;
+    }, false);
+    document.getElementById("canvasContainer").addEventListener('dblclick', function(e) {
+      if(mode == "mouse"){
+        addCard();
+      }
+    }, false);
+
     var previousFrame = null;
     var controllerOptions = {optimizeHMD: true};
     var pressY = 300;
@@ -317,91 +346,108 @@
     var playing = false;
     var volume = 1;
 
+    function mainLoop(fingerX, fingerZ, palmY){
+      if(palmY >= pressY){
+        for (var key in cards) {
+            if (!cards.hasOwnProperty(key)) continue;
+            var x = cards[key]["x"];
+            var z = cards[key]["z"];
+            console.log(x, z, fingerX, fingerZ);
+            if(isOnCard(x + cardWidth / 2, x - cardWidth / 2, z - cardHeight / 2, z + cardHeight / 2, fingerX, fingerZ)){
+              if(cards[key]["sound"] && cards[key]["pressed"] == false){
+                if(cards[key]["sound"] == "vol+"){
+                  volume += 0.1;
+                  if(volume > 1){
+                    volume = 1;
+                  }
+                  document.getElementById("caption").innerHTML = "Volume: " + Math.floor(volume*100) + "%";
+                  document.getElementById("caption").style.display = "block";
+                  Synth.setVolume(volume);
+                }else if(cards[key]["sound"] == "vol-"){
+                  volume -= 0.1;
+                  if(volume < 0){
+                    volume = 0;
+                  }
+                  document.getElementById("caption").innerHTML = "Volume: " + Math.floor(volume*100) + "%";
+                  document.getElementById("caption").style.display = "block";
+                  Synth.setVolume(volume);
+                }else if(cards[key]["sound"] == "Piano"){
+                  selected = 0;
+                  document.getElementById("instrumentLabel").innerHTML = "Instrument: Piano";
+                  document.getElementById("instrumentLabel").style.display = "block";
+                }else if(cards[key]["sound"] == "Guitar"){
+                    selected = 1;
+                    document.getElementById("instrumentLabel").innerHTML = "Instrument: Guitar";
+                    document.getElementById("instrumentLabel").style.display = "block";
+                }else if(cards[key]["sound"] == "Organ"){
+                      selected = 2;
+                      document.getElementById("instrumentLabel").innerHTML = "Instrument: Organ";
+                      document.getElementById("instrumentLabel").style.display = "block";
+                }else{
+                  var s = cards[key]["sound"];
+                  instruments[selected].play(s.substring(0, s.length - 1).toUpperCase(), s.substring(s.length - 1), 2);
+                }
+                cards[key]["pressed"] = true;
+                playing = true;
+              }
+            }else{
+              cards[key]["pressed"] = false;
+            }
+        }
+      }else if(playing){
+        for (var key in cards) {
+            if (!cards.hasOwnProperty(key)) continue;
+            cards[key]["pressed"] = false;
+        }
+        playing = false;
+      }
+
+      // Draw circle on canvas at fingerX/Z
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.beginPath();
+      cx = Math.round(-fingerX + canvas.width / 2);
+      cz = Math.round(fingerZ + canvas.height / 2);
+      context.arc(cx, cz, 10, 0, 2 * Math.PI, false);
+      context.fillStyle = '#0000ff';
+      context.fill();
+
+      // How close are we to pressing?
+      var distance = pressY - palmY;
+      var lineWidth;
+      if(distance > 0){
+        if(distance < 10){
+          lineWidth = 1;
+        }else{
+          lineWidth = Math.floor(Math.log(distance));
+        }
+        context.lineWidth = lineWidth;
+        context.strokeStyle = '#fff';
+        context.stroke();
+      }
+    }
+
+    // Enable a loop for mouse support
+    function loopMouse() {
+        requestAnimationFrame(loopMouse);
+        if(mode != "mouse"){
+          return;
+        }
+        var fingerX = Math.round(-mouseX + canvas.width / 2);
+        var fingerZ = Math.round(mouseY - canvas.height / 2);
+        var palmY = pressY - 1 + mouseDown;
+        mainLoop(fingerX, fingerZ, palmY);
+    }
+    loopMouse();
+
     Leap.loop(controllerOptions, function(frame) {
       var data = document.getElementById("data");
-      if (frame.pointables.length > 0) {
+      if (frame.pointables.length > 0 || mode != "mouse") {
         var indexFinger = frame.pointables[1];
         var fingerX = Math.round(indexFinger.tipPosition[0]);
         var fingerZ = Math.round(indexFinger.tipPosition[2]);
         var palmY = frame.hands[0].palmPosition[1];
-
-        if(palmY > 300){
-          for (var key in cards) {
-              if (!cards.hasOwnProperty(key)) continue;
-              var x = cards[key]["x"];
-              var z = cards[key]["z"];
-              if(isOnCard(x + cardWidth / 2, x - cardWidth / 2, z - cardHeight / 2, z + cardHeight / 2, fingerX, fingerZ)){
-                if(cards[key]["sound"] && cards[key]["pressed"] == false){
-                  if(cards[key]["sound"] == "vol+"){
-                    volume += 0.1;
-                    if(volume > 1){
-                      volume = 1;
-                    }
-                    document.getElementById("caption").innerHTML = "Volume: " + Math.floor(volume*100) + "%";
-                    document.getElementById("caption").style.display = "block";
-                    Synth.setVolume(volume);
-                  }else if(cards[key]["sound"] == "vol-"){
-                    volume -= 0.1;
-                    if(volume < 0){
-                      volume = 0;
-                    }
-                    document.getElementById("caption").innerHTML = "Volume: " + Math.floor(volume*100) + "%";
-                    document.getElementById("caption").style.display = "block";
-                    Synth.setVolume(volume);
-                  }else if(cards[key]["sound"] == "Piano"){
-                    selected = 0;
-                    document.getElementById("instrumentLabel").innerHTML = "Instrument: Piano";
-                    document.getElementById("instrumentLabel").style.display = "block";
-                  }else if(cards[key]["sound"] == "Guitar"){
-                      selected = 1;
-                      document.getElementById("instrumentLabel").innerHTML = "Instrument: Guitar";
-                      document.getElementById("instrumentLabel").style.display = "block";
-                  }else if(cards[key]["sound"] == "Organ"){
-                        selected = 2;
-                        document.getElementById("instrumentLabel").innerHTML = "Instrument: Organ";
-                        document.getElementById("instrumentLabel").style.display = "block";
-                  }else{
-                    instruments[selected].play(cards[key]["sound"][0].toUpperCase(), cards[key]["sound"][1], 2);
-                  }
-                  cards[key]["pressed"] = true;
-                  playing = true;
-                }
-              }else{
-                cards[key]["pressed"] = false;
-              }
-          }
-        }else if(playing){
-          for (var key in cards) {
-              if (!cards.hasOwnProperty(key)) continue;
-              cards[key]["pressed"] = false;
-          }
-          playing = false;
-        }
-
-        // Draw circle on canvas at fingerX/Z
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        context.beginPath();
-        cx = Math.round(-fingerX + canvas.width / 2);
-        cz = Math.round(fingerZ + canvas.height / 2);
-        context.arc(cx, cz, 10, 0, 2 * Math.PI, false);
-        context.fillStyle = '#0000ff';
-        context.fill();
-
-        // How close are we to pressing?
-        var distance = 300 - palmY;
-        var lineWidth;
-        if(distance > 0){
-          if(distance < 10){
-            lineWidth = 1;
-          }else{
-            lineWidth = Math.floor(Math.log(distance));
-          }
-          context.lineWidth = lineWidth;
-          context.strokeStyle = '#fff';
-          context.stroke();
-        }
+        mainLoop(fingerX, fingerZ, palmY);
       }
-
       previousFrame = frame;
     })
 
