@@ -13,4 +13,6 @@ If you don't have a Leap Motion, you can type `mode = "mouse"` in the console to
 
 The code was rushed at times, and some values (such as the y distance of the Leap Motion from the table) are hardcoded. You may have to change these values when testing it.
 
+The code was tested on Chrome 56 and is currently not designed to be cross browser compatible.
+
 https://github.com/keithwhor/audiosynth was used to produce the notes and sounds.
