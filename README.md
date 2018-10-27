@@ -3,6 +3,13 @@ A magic floating piano made with index cards and a Leap Motion
 
 This is the code from our project submitted to CrimsonHacks 2017. It can be found on Devpost at https://devpost.com/software/soundair.
 
+### Video demo
+<p><a href="http://www.youtube.com/watch?feature=player_embedded&v=HQzYNQv8p90
+" target="_blank"><img src="http://img.youtube.com/vi/HQzYNQv8p90/0.jpg" 
+alt="SoundAir Demo | CrimsonHacks 2017" width="240" height="180" border="10" /></a></p>
+
+### Usage
+
 Open index.html to try it out. Position the Leap Motion over the table facing down. (We used a cardboard box to hold it up.) The Leap Motion Controller software needs to be running on your computer for this to work. Only one hand can be tracked at a time (multiple hands will confuse the code).
 The index finger is tracked to determine which card to play, and the height of the center of your hand is tracked to determine when to play the note.
 An open flat hand with spread fingers where the tip of the index finger is centered over the card you wish to play and you play it by moving your hand up and down over the card works best.
